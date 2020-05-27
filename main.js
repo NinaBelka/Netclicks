@@ -2,16 +2,35 @@ document.addEventListener('DOMContentLoaded', function () {
   'use strict';
 
   const IMG_URL = 'https://image.tmdb.org/t/p/w185_and_h278_bestv2';
-  const API_KEY = '464e10b60abead2a4d80d7babcfba4a2';
 
   const leftMenu = document.querySelector('.left-menu'),
     hamburger = document.querySelector('.hamburger'),
     tvShowsList = document.querySelector('.tv-shows__list'),
-    modal = document.querySelector('.modal');
+    modal = document.querySelector('.modal'),
+    tvShows = document.querySelector('.tv-shows'),
+    tvCardImg = document.querySelector('.tv-card__img'),
+    modalTitle = document.querySelector('.modal__title'),
+    genresList = document.querySelector('.genres-list'),
+    rating = document.querySelector('.rating'),
+    description = document.querySelector('.description'),
+    modalLink = document.querySelector('.modal__link'),
+    searchForm = document.querySelector('.search__form'),
+    searchFormInput = document.querySelector('.search__form-input');
+
+  // Создание и реализация прелоудера при загрузке сайта
+  const loading = document.createElement('div');
+  loading.className = 'loading';
 
   // Обращение к базе данных с помощью класса и асинхронной функции asynс - await
 
   class DBService {
+
+    constructor() {
+      this.SERVER = 'https://api.themoviedb.org/3'
+
+      this.API_KEY = '464e10b60abead2a4d80d7babcfba4a2';
+
+    }
     getData = async (url) => {
       const res = await fetch(url);
       if (res.ok) {
@@ -24,6 +43,16 @@ document.addEventListener('DOMContentLoaded', function () {
     getTestData = () => {
       return this.getData('test.json');
     };
+
+    getTestCard = () => {
+      return this.getData('card.json');
+    }
+
+    getSearchResult = query => this
+      .getData(`${this.SERVER}/search/tv?api_key=${this.API_KEY}&language=ru-RU&query=${query}`);
+
+    getTvShow = id => this
+      .getData(`${this.SERVER}/tv/${id}?api_key=${this.API_KEY}&language=ru-RU`);
   }
 
   // Рендеринг полученных данных и создание карточек
@@ -33,42 +62,52 @@ document.addEventListener('DOMContentLoaded', function () {
     response.results.forEach(item => {
 
       // Деструктуризация полученных данных
-
       const {
         backdrop_path: backdrop,
         name: title,
         poster_path: poster,
-        vote_average: vote
+        vote_average: vote,
+        id
       } = item;
 
-      const posterIMG = poster ? IMG_URL + poster : 'img/no-poster.jpg';
-      const backdropIMG = '';
-      const voteElem = '';
+      const posterIMG = poster ? IMG_URL + poster : 'img/no-poster.jpg'; // Проверка на наличие постера
+      const backdropIMG = backdrop ? IMG_URL + backdrop : ''; // Проверка на наличие замещающей картинки
+      const voteElem = vote ? `<span class="tv-card__vote">${vote}</span>` : ''; // Проверка на наличие оценки в баллах
 
       const card = document.createElement('li');
       card.className = 'tv-shows__item';
       card.innerHTML = `
-        <a href="#" class="tv-card">
-          <span class="tv-card__vote">${vote}</span>
-          <img class="tv-card__img"
+        <a href="#" id="${id}" class="tv-card">
+            ${voteElem}          
+            <img class="tv-card__img"
             src="${posterIMG}"
-            data-backdrop="${IMG_URL + backdrop}"
+            data-backdrop="${backdropIMG}"
             alt="${title}">
           <h4 class="tv-card__head">${title}</h4>
         </a>
       `;
 
+      loading.remove();
       tvShowsList.append(card);
     });
   };
 
-  new DBService().getTestData().then(renderCard);
+  // Реализация поиска
+  searchForm.addEventListener('submit', event => {
+    event.preventDefault();
+    const value = searchFormInput.value.trim();
+
+    if (value) {
+      tvShows.append(loading);
+      new DBService().getSearchResult(value).then(renderCard);
+    }
+    searchFormInput.value = '';
+  });
 
   // Открытие-закрытие меню
   hamburger.addEventListener('click', () => {
     leftMenu.classList.toggle('openMenu');
     hamburger.classList.toggle('open');
-
   });
 
   // Закрытие меню при клике вне меню
@@ -82,6 +121,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Открытие вложенного меню
   leftMenu.addEventListener('click', event => {
+    event.preventDefault();
     const dropdown = event.target.closest('.dropdown');
     if (dropdown) {
       dropdown.classList.toggle('active');
@@ -95,8 +135,37 @@ document.addEventListener('DOMContentLoaded', function () {
     event.preventDefault();
     const card = event.target.closest('.tv-card');
     if (card) {
-      document.body.style.overflow = 'hidden';
-      modal.classList.remove('hide');
+
+      // Заполнение модального окна
+      new DBService().getTvShow(card.id)
+        .then(data => {
+          tvCardImg.src = IMG_URL + data.poster_path;
+          modalTitle.textContent = data.name;
+
+          // Реализация через метод .reduce()
+          // genresList.innerHTML = data.genres.reduce((acc, item) => `${acc}<li>${item.name}</li>`, '');
+
+          //Реализация через цикл for of (быстрее, чем forEach)
+          // genresList.textContent = '';
+          // for (const item of data.genres) {
+          //   genresList.innerHTML += `<li>${item.name}</li>`;
+          // }
+
+          // Реализация через метод .forEach()
+          genresList.textContent = '';
+          data.genres.forEach(item => {
+            genresList.innerHTML += `<li>${item.name}</li>`;
+          });
+
+          rating.textContent = data.vote_average;
+          description.textContent = data.overview;
+          modalLink.href = data.homepage;
+
+        })
+        .then(() => {
+          document.body.style.overflow = 'hidden';
+          modal.classList.remove('hide');
+        })
     }
   });
 
@@ -129,6 +198,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
-
-
 });
+
+// Полезная ссылка https://jsonplaceholder.typicode.com/
