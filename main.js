@@ -20,14 +20,15 @@ document.addEventListener('DOMContentLoaded', function () {
     dropdown = document.querySelectorAll('.dropdown'),
     tvShowsHead = document.querySelector('.tv-shows__head'),
     posterWrapper = document.querySelector('.poster__wrapper'),
-    modalContent = document.querySelector('.modal__content');
+    modalContent = document.querySelector('.modal__content'),
+    pagination = document.querySelector('.pagination');
 
   // Создание и реализация прелоудера при загрузке сайта
+
   const loading = document.createElement('div');
   loading.className = 'loading';
 
   // Обращение к базе данных с помощью класса и асинхронной функции asynс - await
-
   class DBService {
 
     constructor() {
@@ -52,8 +53,16 @@ document.addEventListener('DOMContentLoaded', function () {
       return this.getData('card.json');
     };
 
-    getSearchResult = query => this
-      .getData(`${this.SERVER}/search/tv?api_key=${this.API_KEY}&language=ru-RU&query=${query}`);
+    // Возврат всех страниц запрошенного в поиске
+
+    getSearchResult = query => {
+      this.temp = `${this.SERVER}/search/tv?api_key=${this.API_KEY}&language=ru-RU&query=${query}`;
+      return this.getData(this.temp);
+    }
+
+    getNextPage = page => {
+      return this.getData(this.temp + '&page=' + page);
+    }
 
     getTvShow = id => this
       .getData(`${this.SERVER}/tv/${id}?api_key=${this.API_KEY}&language=ru-RU`);
@@ -73,10 +82,12 @@ document.addEventListener('DOMContentLoaded', function () {
   const dbService = new DBService();
 
   // Рендеринг полученных данных и создание карточек
+
   const renderCard = (response, target) => {
     tvShowsList.textContent = '';
 
     // Если по поиску ничего не найдено
+
     if (!response.total_results) {
       loading.remove();
       tvShowsHead.textContent = 'К сожалению, по Вашему запросу ничего не найдено...';
@@ -90,6 +101,7 @@ document.addEventListener('DOMContentLoaded', function () {
     response.results.forEach(item => {
 
       // Деструктуризация полученных данных
+
       const {
         backdrop_path: backdrop,
         name: title,
@@ -99,7 +111,9 @@ document.addEventListener('DOMContentLoaded', function () {
       } = item;
 
       const posterIMG = poster ? IMG_URL + poster : 'img/no-poster.jpg'; // Проверка на наличие постера
+
       const backdropIMG = backdrop ? IMG_URL + backdrop : ''; // Проверка на наличие замещающей картинки
+
       const voteElem = vote ? `<span class="tv-card__vote">${vote}</span>` : ''; // Проверка на наличие оценки в баллах
 
       const card = document.createElement('li');
@@ -118,9 +132,28 @@ document.addEventListener('DOMContentLoaded', function () {
       loading.remove();
       tvShowsList.append(card);
     });
+
+    // Пагинация полученных данных
+
+    pagination.textContent = '';
+    if (!target && response.total_pages > 1) {
+      for (let i = 1; i <= response.total_pages; i++) {
+        pagination.innerHTML += `<li><a href="#" class="pages">${i}</a></li>`;
+      }
+    }
   };
 
+  pagination.addEventListener('click', event => {
+    event.preventDefault();
+    const target = event.target;
+    if (target.classList.contains('pages')) {
+      tvShows.append(loading);
+      dbService.getNextPage(target.textContent).then(renderCard);
+    }
+  });
+
   // Реализация поиска
+
   searchForm.addEventListener('submit', event => {
     event.preventDefault();
     const value = searchFormInput.value.trim();
@@ -146,6 +179,7 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   // Закрытие меню при клике вне меню
+
   document.addEventListener('click', event => {
     const target = event.target;
     if (!target.closest('.left-menu')) {
@@ -156,6 +190,7 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   // Открытие вложенного меню, реализация функций вложенного меню
+
   leftMenu.addEventListener('click', event => {
     event.preventDefault();
     const target = event.target;
@@ -200,10 +235,10 @@ document.addEventListener('DOMContentLoaded', function () {
       leftMenu.classList.remove('openMenu');
       hamburger.classList.remove('open');
     }
-
   });
 
   // Открытие модального окна
+
   tvShowsList.addEventListener('click', event => {
     event.preventDefault();
     const target = event.target;
@@ -211,11 +246,15 @@ document.addEventListener('DOMContentLoaded', function () {
     if (card) {
 
       // Прелоудер перед загрузкой модального окна
+
       preloader.style.display = 'block';
 
       // Заполнение модального окна
+
       dbService.getTvShow(card.id)
+
         // Деструктуризация
+
         .then(({
           poster_path: posterPath,
           name: title,
@@ -226,6 +265,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }) => {
 
           // Изменение модального окна при отсутствии постера
+
           if (posterPath) {
             tvCardImg.src = IMG_URL + posterPath;
             tvCardImg.alt = title;
@@ -248,6 +288,7 @@ document.addEventListener('DOMContentLoaded', function () {
           // }
 
           // Реализация через метод .forEach()
+
           genresList.textContent = '';
           genres.forEach(item => {
             genresList.innerHTML += `<li>${item.name}</li>`;
@@ -256,12 +297,13 @@ document.addEventListener('DOMContentLoaded', function () {
           rating.textContent = voteAverage;
           description.textContent = overview;
           modalLink.href = homepage;
-
         })
+
         .then(() => {
           document.body.style.overflow = 'hidden';
           modal.classList.remove('hide');
         })
+
         .finally(() => {
           preloader.style.display = '';
         });
@@ -269,6 +311,7 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   // Закрытие модального окна по нажатию на крестик или на поле вокруг модального окна
+
   modal.addEventListener('click', event => {
     const target = event.target;
     if (target.closest('.cross') ||
@@ -279,6 +322,7 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   // Изменение картинки при наведении на нее мыши
+
   const changeImage = event => {
     const card = event.target.closest('.tv-shows__item');
     if (card) {
