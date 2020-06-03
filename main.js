@@ -21,7 +21,9 @@ document.addEventListener('DOMContentLoaded', function () {
     tvShowsHead = document.querySelector('.tv-shows__head'),
     posterWrapper = document.querySelector('.poster__wrapper'),
     modalContent = document.querySelector('.modal__content'),
-    pagination = document.querySelector('.pagination');
+    pagination = document.querySelector('.pagination'),
+    trailer = document.getElementById('trailer'),
+    headTrailer = document.getElementById('headTrailer');
 
   // Создание и реализация прелоудера при загрузке сайта
 
@@ -78,6 +80,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     getWeek = () => this
       .getData(`${this.SERVER}/tv/on_the_air?api_key=${this.API_KEY}&language=ru-RU`);
+
+    getVideo = id => this
+      .getData(`${this.SERVER}/tv/${id}/videos?api_key=${this.API_KEY}&language=ru-RU`);
   }
   const dbService = new DBService();
 
@@ -261,7 +266,8 @@ document.addEventListener('DOMContentLoaded', function () {
           genres,
           vote_average: voteAverage,
           overview,
-          homepage
+          homepage,
+          id
         }) => {
 
           // Изменение модального окна при отсутствии постера
@@ -297,6 +303,32 @@ document.addEventListener('DOMContentLoaded', function () {
           rating.textContent = voteAverage;
           description.textContent = overview;
           modalLink.href = homepage;
+          return card.id;
+        })
+
+        .then(dbService.getVideo)
+        .then(response => {
+          headTrailer.classList.add('hide');
+          trailer.textContent = '';
+          if (response.results.length) {
+            headTrailer.classList.remove('hide');
+            response.results.forEach(item => {
+              const trailerItem = document.createElement('li');
+
+              trailerItem.innerHTML = `
+              <h4>${item.name}</h4>
+              <iframe
+                width="100%"
+                height="300"
+                src="https://www.youtube.com/embed/${item.key}"
+                frameborder="0"
+                allowfullscreen>
+              </iframe>
+            `;
+
+              trailer.append(trailerItem);
+            })
+          }
         })
 
         .then(() => {
