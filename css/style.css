@@ -666,6 +666,18 @@ main {
   border-radius: 10px;
 }
 
+#headTrailer {
+  margin-bottom: 20px;
+}
+
+#trailer li {
+  margin-bottom: 50px;
+}
+#trailer li h4 {
+  margin-bottom: 20px;
+}
+
+
 @media (max-width: 1024px) {
   .container {
     padding: 0 60px;
